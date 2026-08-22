@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IRCTC Next Generation eTicketing System (Simulated Tatkal Portal)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .irctc-blue { background-color: #003366; }
+    .irctc-orange { background-color: #fb792b; }
+    .irctc-border-blue { border-color: #003366; }
+    .irctc-text-blue { color: #003366; }
+    .irctc-text-orange { color: #fb792b; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col antialiased">
+
+  <!-- Latency & Chaos Simulator Toolbar (Developer Control) -->
+  <div class="bg-slate-900 text-slate-100 px-4 py-2 border-b border-slate-700 flex flex-wrap items-center justify-between gap-3 text-xs">
+    <div class="flex items-center space-x-2">
+      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+      <span class="font-bold text-orange-400">⚡ Tatkal Simulation Environment</span>
+      <span class="text-slate-400">|</span>
+      <span id="liveIstClock" class="font-mono text-slate-200">IST 09:59:58 AM</span>
+    </div>
+
+    <div class="flex items-center space-x-3">
+      <label class="text-slate-300 font-semibold">Simulate Conditions:</label>
+      <select id="latencyProfileSelect" class="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-slate-100 text-xs font-medium focus:outline-none">
+        <option value="NORMAL">Normal Conditions (250ms)</option>
+        <option value="TATKAL_RUSH" selected>🔥 Tatkal Peak Rush (4,500ms Server Latency)</option>
+        <option value="PAYMENT_SLOW">🐢 Bank Gateway Delays (8,000ms)</option>
+        <option value="SEATS_EXHAUSTED">❌ Tatkal Exhausted (0 Seats)</option>
+      </select>
+      <a href="http://localhost:3000/dashboard" target="_blank" class="px-2.5 py-1 rounded bg-orange-600 hover:bg-orange-500 text-white font-semibold transition">
+        View Transparency Dashboard
+      </a>
+    </div>
+  </div>
+
+  <!-- IRCTC Real Branding Navigation Header -->
+  <header class="bg-white shadow-sm border-b border-slate-200">
+    <div class="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-full bg-blue-900 flex items-center justify-center text-white font-black text-xl shadow">
+          🚆
+        </div>
+        <div>
+          <div class="text-base font-extrabold irctc-text-blue tracking-tight leading-none">INDIAN RAILWAYS</div>
+          <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Safety • Security • Punctuality</div>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-4 text-xs font-semibold text-slate-600">
+        <span class="text-emerald-700 bg-emerald-50 px-2 py-1 rounded border border-emerald-200 font-mono">
+          ● TATKAL BOOKING ACTIVE (10:00 AM IST)
+        </span>
+        <span>User: <strong class="text-slate-800 font-mono">irctc_user_tatkal</strong></span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Booking Flow Container -->
+  <main class="flex-1 max-w-5xl w-full mx-auto p-4 md:p-6 space-y-6">
+
+    <!-- Loading Spinner Overlay when simulated latency is executing -->
+    <div id="loadingOverlay" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex flex-col items-center justify-center text-white">
+      <div class="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+      <div id="loadingText" class="text-sm font-bold text-slate-100">Connecting to CRIS PRS Database...</div>
+      <div id="loadingTimer" class="text-xs text-orange-300 font-mono mt-1">4.5s simulated lag</div>
+    </div>
+
+    <!-- SCREEN 1: TRAIN SEARCH SCREEN -->
+    <section id="screen-train-search" data-screen="train-search" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-5">
+      <div class="border-b border-slate-200 pb-3 flex items-center justify-between">
+        <h2 class="text-lg font-bold irctc-text-blue flex items-center gap-2">
+          <span>🔍</span> Book Ticket / Train Search
+        </h2>
+        <span class="text-xs px-2.5 py-1 rounded-full bg-orange-100 text-orange-800 font-bold border border-orange-200">
+          Tatkal Quota Opens at 10:00 AM
+        </span>
+      </div>
+
+      <form id="trainSearchForm" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+          <label class="text-xs font-bold text-slate-700 block mb-1">From Station</label>
+          <input type="text" id="origin" value="SBC - KSR BENGALURU" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 focus:bg-white focus:border-blue-600 focus:outline-none" />
+        </div>
+        <div>
+          <label class="text-xs font-bold text-slate-700 block mb-1">To Station</label>
+          <input type="text" id="destination" value="MAS - MGR CHENNAI CTRL" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 focus:bg-white focus:border-blue-600 focus:outline-none" />
+        </div>
+        <div>
+          <label class="text-xs font-bold text-slate-700 block mb-1">Journey Date</label>
+          <input type="date" id="journeyDate" value="2026-08-23" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 focus:bg-white focus:border-blue-600 focus:outline-none" />
+        </div>
+        <div>
+          <label class="text-xs font-bold text-slate-700 block mb-1">Quota</label>
+          <select id="quotaSelect" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm font-bold text-orange-600 focus:bg-white focus:border-blue-600 focus:outline-none">
+            <option value="TATKAL" selected>TATKAL (TQ)</option>
+            <option value="PREMIUM_TATKAL">PREMIUM TATKAL (PT)</option>
+            <option value="GENERAL">GENERAL (GN)</option>
+          </select>
+        </div>
+
+        <div class="md:col-span-4 flex justify-end pt-2">
+          <button type="submit" id="searchTrainsBtn" class="px-6 py-2.5 rounded-lg bg-orange-600 hover:bg-orange-500 text-white font-bold text-sm shadow transition flex items-center gap-2">
+            <span>Find Available Trains</span>
+            <span>➔</span>
+          </button>
+        </div>
+      </form>
+
+      <!-- Search Results Table -->
+      <div id="trainResultsContainer" class="hidden space-y-4 pt-4 border-t border-slate-200">
+        <div class="text-sm font-bold text-slate-700">Available Trains matching your search:</div>
+        
+        <!-- Train Card 1 -->
+        <div class="border border-slate-200 rounded-xl p-4 bg-slate-50/50 hover:bg-slate-50 transition space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2">
+            <div>
+              <span class="text-base font-extrabold irctc-text-blue">12658 - CHENNAI MAIL (TATKAL EXPRESS)</span>
+              <div class="text-xs text-slate-500">Runs daily • Departs 08:00 AM from SBC • Arrives 02:30 PM at MAS</div>
+            </div>
+            <span class="px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-xs font-bold">Fast Superfast</span>
+          </div>
+
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+            <div class="p-2.5 rounded-lg border bg-white border-slate-200 flex flex-col justify-between">
+              <span class="font-bold text-slate-700">3A (AC 3 Tier)</span>
+              <div class="my-1">
+                <span id="seatCountBadge" class="text-emerald-700 font-extrabold text-sm">AVAILABLE - 16</span>
+              </div>
+              <span class="text-slate-500 font-mono">₹1,420 (incl. Tatkal)</span>
+            </div>
+            <div class="p-2.5 rounded-lg border bg-white border-slate-200 flex flex-col justify-between opacity-80">
+              <span class="font-bold text-slate-700">2A (AC 2 Tier)</span>
+              <div class="my-1"><span class="text-amber-700 font-extrabold">AVAILABLE - 4</span></div>
+              <span class="text-slate-500 font-mono">₹1,980</span>
+            </div>
+            <div class="p-2.5 rounded-lg border bg-white border-slate-200 flex flex-col justify-between opacity-80">
+              <span class="font-bold text-slate-700">SL (Sleeper)</span>
+              <div class="my-1"><span class="text-slate-600 font-bold">Opens at 11:00 AM</span></div>
+              <span class="text-slate-500 font-mono">₹445</span>
+            </div>
+            <div class="flex items-center justify-center">
+              <button id="bookNowBtn" class="w-full py-2.5 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow transition">
+                ⚡ Book Now (Tatkal)
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCREEN 2: PASSENGER DETAILS FORM SCREEN -->
+    <section id="screen-passenger-details" data-screen="passenger-details" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-6">
+      <div class="border-b border-slate-200 pb-3 flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-bold irctc-text-blue flex items-center gap-2">
+            <span>👥</span> Passenger Details
+          </h2>
+          <p class="text-xs text-slate-500">Train: 12658 Chennai Mail | Quota: Tatkal | Class: 3A</p>
+        </div>
+        <button id="addPassengerBtn" class="px-3 py-1.5 rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-700">
+          + Add Passenger
+        </button>
+      </div>
+
+      <form id="passengerForm" class="space-y-5">
+        <!-- Passenger Rows Container -->
+        <div id="passengerRowsContainer" class="space-y-3">
+          <!-- Passenger Row 1 -->
+          <div class="passenger-row p-3.5 rounded-lg bg-slate-50 border border-slate-200 grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+            <div class="md:col-span-1 text-xs font-bold text-slate-500 text-center">Psgn 1</div>
+            <div class="md:col-span-4">
+              <label class="text-[10px] font-bold text-slate-600 block mb-0.5">Passenger Name</label>
+              <input type="text" name="passengerName" placeholder="Name" class="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-800 focus:border-blue-600 focus:outline-none" />
+            </div>
+            <div class="md:col-span-2">
+              <label class="text-[10px] font-bold text-slate-600 block mb-0.5">Age</label>
+              <input type="number" name="passengerAge" placeholder="Age" class="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-800 focus:border-blue-600 focus:outline-none" />
+            </div>
+            <div class="md:col-span-2">
+              <label class="text-[10px] font-bold text-slate-600 block mb-0.5">Gender</label>
+              <select name="passengerGender" class="w-full bg-white border border-slate-300 rounded px-2 py-1.5 text-xs text-slate-800 focus:border-blue-600 focus:outline-none">
+                <option value="">Select</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Transgender">Transgender</option>
+              </select>
+            </div>
+            <div class="md:col-span-3">
+              <label class="text-[10px] font-bold text-slate-600 block mb-0.5">Berth Preference</label>
+              <select name="passengerBerth" class="w-full bg-white border border-slate-300 rounded px-2 py-1.5 text-xs text-slate-800 focus:border-blue-600 focus:outline-none">
+                <option value="No Preference">No Preference</option>
+                <option value="Lower">Lower</option>
+                <option value="Middle">Middle</option>
+                <option value="Upper">Upper</option>
+                <option value="Side Lower">Side Lower</option>
+                <option value="Side Upper">Side Upper</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Passenger Row 2 -->
+          <div class="passenger-row p-3.5 rounded-lg bg-slate-50 border border-slate-200 grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+            <div class="md:col-span-1 text-xs font-bold text-slate-500 text-center">Psgn 2</div>
+            <div class="md:col-span-4">
+              <label class="text-[10px] font-bold text-slate-600 block mb-0.5">Passenger Name</label>
+              <input type="text" name="passengerName" placeholder="Name" class="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-800 focus:border-blue-600 focus:outline-none" />
+            </div>
+            <div class="md:col-span-2">
+              <label class="text-[10px] font-bold text-slate-600 block mb-0.5">Age</label>
+              <input type="number" name="passengerAge" placeholder="Age" class="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-800 focus:border-blue-600 focus:outline-none" />
+            </div>
+            <div class="md:col-span-2">
+              <label class="text-[10px] font-bold text-slate-600 block mb-0.5">Gender</label>
+              <select name="passengerGender" class="w-full bg-white border border-slate-300 rounded px-2 py-1.5 text-xs text-slate-800 focus:border-blue-600 focus:outline-none">
+                <option value="">Select</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Transgender">Transgender</option>
+              </select>
+            </div>
+            <div class="md:col-span-3">
+              <label class="text-[10px] font-bold text-slate-600 block mb-0.5">Berth Preference</label>
+              <select name="passengerBerth" class="w-full bg-white border border-slate-300 rounded px-2 py-1.5 text-xs text-slate-800 focus:border-blue-600 focus:outline-none">
+                <option value="No Preference">No Preference</option>
+                <option value="Lower">Lower</option>
+                <option value="Middle">Middle</option>
+                <option value="Upper">Upper</option>
+                <option value="Side Lower">Side Lower</option>
+                <option value="Side Upper">Side Upper</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Contact & Travel Preferences -->
+        <div class="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-3 text-xs">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="font-bold text-slate-700 block mb-1">Contact Mobile Number (for SMS confirmation)</label>
+              <input type="text" id="mobileNumber" name="mobileNumber" placeholder="10-digit mobile" class="w-full bg-white border border-slate-300 rounded px-3 py-1.5 font-mono text-slate-800 focus:border-blue-600 focus:outline-none" />
+            </div>
+            <div class="space-y-1.5 pt-4">
+              <label class="flex items-center space-x-2 text-slate-700 cursor-pointer">
+                <input type="checkbox" id="autoUpgrade" name="autoUpgrade" class="rounded text-blue-600" />
+                <span>Consider for Auto-Upgrade</span>
+              </label>
+              <label class="flex items-center space-x-2 text-slate-700 cursor-pointer">
+                <input type="checkbox" id="confirmBerths" name="confirmBerths" class="rounded text-blue-600" />
+                <span>Book only if confirm berths are allotted</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Payment Mode Selection -->
+          <div class="pt-3 border-t border-slate-200 space-y-2">
+            <div class="font-bold text-slate-700">Payment Mode:</div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <label class="flex items-start space-x-2 p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer hover:border-blue-500">
+                <input type="radio" id="payModeUpi" name="paymentMode" value="UPI" checked class="mt-0.5 text-blue-600" />
+                <div>
+                  <div class="font-bold text-slate-800">Pay through BHIM/UPI (Convenience Fee: ₹10)</div>
+                  <div class="text-[11px] text-slate-500">Fastest confirmation during Tatkal opening</div>
+                </div>
+              </label>
+              <label class="flex items-start space-x-2 p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer hover:border-blue-500">
+                <input type="radio" id="payModeCard" name="paymentMode" value="CARD" class="mt-0.5 text-blue-600" />
+                <div>
+                  <div class="font-bold text-slate-800">Pay through Credit / Debit Cards / NetBanking</div>
+                  <div class="text-[11px] text-slate-500">Convenience Fee: ₹15 + GST</div>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-between items-center pt-2">
+          <button type="button" id="backToSearchBtn" class="px-4 py-2 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+            ← Back to Search
+          </button>
+          <button type="submit" id="passengerContinueBtn" class="px-6 py-2.5 rounded-lg bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs shadow transition">
+            Continue to Review ➔
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- SCREEN 3: REVIEW & CAPTCHA SCREEN -->
+    <section id="screen-review-captcha" data-screen="review-captcha" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-6">
+      <div class="border-b border-slate-200 pb-3">
+        <h2 class="text-lg font-bold irctc-text-blue flex items-center gap-2">
+          <span>📝</span> Review Booking & Enter CAPTCHA
+        </h2>
+        <p class="text-xs text-slate-500">Please verify passenger details and enter the visual verification code.</p>
+      </div>
+
+      <!-- Ticket Summary Card -->
+      <div class="p-4 rounded-lg bg-blue-50/50 border border-blue-200 space-y-2 text-xs">
+        <div class="flex justify-between font-bold text-slate-800">
+          <span>12658 CHENNAI MAIL | 3A | TATKAL</span>
+          <span class="text-emerald-700">Total Fare: ₹1,430</span>
+        </div>
+        <div id="reviewPassengersList" class="text-slate-600 font-medium">
+          <!-- Dynamic passenger list inserted here -->
+        </div>
+      </div>
+
+      <!-- CAPTCHA Section -->
+      <div id="captcha-section" class="p-5 rounded-xl bg-slate-50 border border-slate-300 max-w-md mx-auto text-center space-y-3">
+        <div class="text-xs font-bold text-slate-700">Visual Security Verification (CAPTCHA)</div>
+        
+        <div class="flex items-center justify-center space-x-3">
+          <div id="captchaImg" class="px-4 py-2 bg-slate-900 text-orange-400 font-mono font-black text-xl tracking-widest rounded select-none shadow-inner border border-slate-700">
+            9X4KT
+          </div>
+          <button type="button" id="refreshCaptchaBtn" class="text-xs text-blue-600 hover:underline font-semibold">
+            🔄 Refresh
+          </button>
+        </div>
+
+        <div>
+          <input
+            type="text"
+            id="captchaInput"
+            name="captcha"
+            placeholder="Type characters shown above"
+            class="w-48 bg-white border-2 border-slate-300 focus:border-orange-500 rounded-lg px-3 py-1.5 text-center font-mono text-base font-bold text-slate-800 focus:outline-none"
+          />
+        </div>
+        <p class="text-[10px] text-slate-500">Human entry required • Never solved by extension</p>
+      </div>
+
+      <div class="flex justify-between items-center pt-2">
+        <button type="button" id="backToPassengerBtn" class="px-4 py-2 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+          ← Edit Passengers
+        </button>
+        <button type="button" id="reviewContinueBtn" class="px-6 py-2.5 rounded-lg bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs shadow transition">
+          Proceed to Payment ➔
+        </button>
+      </div>
+    </section>
+
+    <!-- SCREEN 4: PAYMENT GATEWAY SCREEN -->
+    <section id="screen-payment-gateway" data-screen="payment-gateway" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-6">
+      <div class="border-b border-slate-200 pb-3">
+        <h2 class="text-lg font-bold irctc-text-blue flex items-center gap-2">
+          <span>💳</span> Payment Gateway & Bank Handshake
+        </h2>
+        <p class="text-xs text-slate-500">Select payment provider to finalize your Tatkal reservation.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+        <div class="p-4 rounded-xl border-2 border-orange-500 bg-orange-50/30 flex flex-col justify-between space-y-3">
+          <div>
+            <div class="font-bold text-slate-900">BHIM UPI / QR (Instant)</div>
+            <div class="text-slate-500 text-[11px] mt-1">Pre-authorized fast Tatkal settlement</div>
+          </div>
+          <span class="text-emerald-700 font-bold">Recommended for Tatkal</span>
+        </div>
+
+        <div class="p-4 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col justify-between space-y-3 opacity-70">
+          <div>
+            <div class="font-bold text-slate-900">RuPay Debit / Credit Card</div>
+            <div class="text-slate-500 text-[11px] mt-1">PCI-DSS Tokenized Payment</div>
+          </div>
+          <span class="text-slate-500">Standard OTP Auth</span>
+        </div>
+
+        <div class="p-4 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col justify-between space-y-3 opacity-70">
+          <div>
+            <div class="font-bold text-slate-900">Internet Banking (Retail)</div>
+            <div class="text-slate-500 text-[11px] mt-1">Direct Bank Portal Redirect</div>
+          </div>
+          <span class="text-slate-500">High Latency Risk</span>
+        </div>
+      </div>
+
+      <div class="flex justify-end pt-4 border-t border-slate-200">
+        <button type="button" id="makePaymentBtn" class="px-8 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm shadow-lg transition flex items-center gap-2">
+          <span>🔒 Pay ₹1,430 & Confirm Booking</span>
+          <span>➔</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- SCREEN 5: CONFIRMATION SCREEN -->
+    <section id="screen-booking-confirmation" data-screen="booking-confirmation" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-8 space-y-6 text-center">
+      <div class="w-16 h-16 rounded-full bg-emerald-100 border-2 border-emerald-500 text-emerald-600 flex items-center justify-center text-3xl mx-auto">
+        ✓
+      </div>
+
+      <div class="space-y-1">
+        <h2 class="text-2xl font-black text-slate-900">Tatkal Ticket Booked Successfully!</h2>
+        <p class="text-sm text-slate-500">Your electronic reservation slip (ERS) has been generated.</p>
+      </div>
+
+      <!-- PNR Badge -->
+      <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 max-w-md mx-auto space-y-2">
+        <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider">PNR NUMBER</div>
+        <div id="pnrNumber" class="text-2xl font-mono font-black text-blue-900 tracking-widest">
+          421-9876543
+        </div>
+        <div class="text-xs font-semibold text-emerald-700">
+          Status: <span class="bg-emerald-100 px-2 py-0.5 rounded">CONFIRMED (CNF / B3 - Berth 21, 22)</span>
+        </div>
+      </div>
+
+      <div class="pt-4 flex justify-center space-x-3">
+        <button id="bookAnotherBtn" class="px-5 py-2.5 rounded-lg bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs shadow transition">
+          Book Another Ticket
+        </button>
+        <a href="http://localhost:3000/dashboard" target="_blank" class="px-5 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 transition">
+          View Public Analytics
+        </a>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500 mt-auto">
+    Simulated IRCTC Environment for Tatkal Readiness Layer Hackathon Demo • No actual bookings or banking transactions are made.
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>
+

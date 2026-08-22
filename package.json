@@ -1,0 +1,39 @@
+{
+  "name": "irctc-tatkal-layer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tatkal Readiness & Transparency Layer for IRCTC",
+  "workspaces": [
+    "shared",
+    "vault-service",
+    "analytics-service",
+    "extension",
+    "dashboard",
+    "mock-irctc"
+  ],
+  "scripts": {
+    "dev:vault": "npm --workspace=vault-service run dev",
+    "dev:analytics": "npm --workspace=analytics-service run dev",
+    "dev:extension": "npm --workspace=extension run dev",
+    "dev:dashboard": "npm --workspace=dashboard run dev",
+    "dev:mock": "npm --workspace=mock-irctc run dev",
+    "build:shared": "npm --workspace=shared run build",
+    "build:vault": "npm --workspace=vault-service run build",
+    "build:analytics": "npm --workspace=analytics-service run build",
+    "build:extension": "npm --workspace=extension run build",
+    "build:dashboard": "npm --workspace=dashboard run build",
+    "build:mock": "npm --workspace=mock-irctc run build",
+    "build:all": "npm run build:shared && npm run build:vault && npm run build:analytics && npm run build:extension && npm run build:dashboard && npm run build:mock",
+    "test:all": "npm --workspace=shared test && npm --workspace=vault-service test && npm --workspace=analytics-service test && npm --workspace=extension test"
+  },
+  "keywords": [
+    "irctc",
+    "tatkal",
+    "diagnostics",
+    "transparency",
+    "chrome-extension"
+  ],
+  "author": "",
+  "license": "MIT"
+}
+

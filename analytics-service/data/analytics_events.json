@@ -1,0 +1,56 @@
+[
+  {
+    "sessionHash": "anon_sha256_hash_test_12345",
+    "tatkalQuota": "AC_TATKAL",
+    "totalDurationMs": 14200,
+    "stages": [
+      {
+        "stage": "PAGE_LOAD",
+        "durationMs": 1200
+      },
+      {
+        "stage": "SEAT_AVAILABILITY_CHECK",
+        "durationMs": 4500
+      },
+      {
+        "stage": "AUTOFILL_EXECUTION",
+        "durationMs": 250
+      },
+      {
+        "stage": "CAPTCHA_DISPLAYED",
+        "durationMs": 5100
+      },
+      {
+        "stage": "PAYMENT_GATEWAY_INTERACTION",
+        "durationMs": 3150
+      }
+    ],
+    "outcome": "SUCCESS",
+    "primaryBottleneckStage": "CAPTCHA_DISPLAYED",
+    "clientVersion": "1.0.0",
+    "timestamp": "2026-08-22T15:53:39.221Z"
+  },
+  {
+    "sessionHash": "anon_sha256_hash_test_67890",
+    "tatkalQuota": "NON_AC_TATKAL",
+    "totalDurationMs": 18500,
+    "stages": [
+      {
+        "stage": "PAGE_LOAD",
+        "durationMs": 2500
+      },
+      {
+        "stage": "SEAT_AVAILABILITY_CHECK",
+        "durationMs": 8900
+      },
+      {
+        "stage": "AUTOFILL_EXECUTION",
+        "durationMs": 300
+      }
+    ],
+    "outcome": "FAILURE_SEATS_EXHAUSTED",
+    "primaryBottleneckStage": "SEAT_AVAILABILITY_CHECK",
+    "clientVersion": "1.0.0",
+    "timestamp": "2026-08-22T15:53:39.223Z"
+  }
+]

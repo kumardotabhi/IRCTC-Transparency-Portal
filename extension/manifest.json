@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "Tatkal Readiness & Transparency Layer",
+  "version": "1.0.0",
+  "description": "Zero-knowledge passenger vault, Tatkal readiness countdown, safe autofill, and latency bottleneck diagnostics for IRCTC.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "*://*.irctc.co.in/*",
+    "http://localhost:*/*",
+    "http://127.0.0.1:*/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.irctc.co.in/*",
+        "http://localhost:*/*",
+        "http://127.0.0.1:*/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Tatkal Readiness Layer"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  }
+}
+
