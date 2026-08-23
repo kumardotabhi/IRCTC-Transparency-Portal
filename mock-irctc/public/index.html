@@ -6,6 +6,7 @@
   <title>IRCTC Next Generation eTicketing System (Simulated Tatkal Portal)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
+    .hidden { display: none !important; }
     .irctc-blue { background-color: #003366; }
     .irctc-orange { background-color: #fb792b; }
     .irctc-border-blue { border-color: #003366; }
@@ -27,12 +28,12 @@
     <div class="flex items-center space-x-3">
       <label class="text-slate-300 font-semibold">Simulate Conditions:</label>
       <select id="latencyProfileSelect" class="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-slate-100 text-xs font-medium focus:outline-none">
-        <option value="NORMAL">Normal Conditions (250ms)</option>
-        <option value="TATKAL_RUSH" selected>🔥 Tatkal Peak Rush (4,500ms Server Latency)</option>
+        <option value="NORMAL" selected>Normal Conditions (250ms)</option>
+        <option value="TATKAL_RUSH">🔥 Tatkal Peak Rush (4,500ms Server Latency)</option>
         <option value="PAYMENT_SLOW">🐢 Bank Gateway Delays (8,000ms)</option>
         <option value="SEATS_EXHAUSTED">❌ Tatkal Exhausted (0 Seats)</option>
       </select>
-      <a href="http://localhost:3000/dashboard" target="_blank" class="px-2.5 py-1 rounded bg-orange-600 hover:bg-orange-500 text-white font-semibold transition">
+      <a href="http://localhost:3003" target="_blank" class="px-2.5 py-1 rounded bg-orange-600 hover:bg-orange-500 text-white font-semibold transition">
         View Transparency Dashboard
       </a>
     </div>
@@ -64,7 +65,7 @@
   <main class="flex-1 max-w-5xl w-full mx-auto p-4 md:p-6 space-y-6">
 
     <!-- Loading Spinner Overlay when simulated latency is executing -->
-    <div id="loadingOverlay" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex flex-col items-center justify-center text-white">
+    <div id="loadingOverlay" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex flex-col items-center justify-center text-white" style="display: none;">
       <div class="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mb-3"></div>
       <div id="loadingText" class="text-sm font-bold text-slate-100">Connecting to CRIS PRS Database...</div>
       <div id="loadingTimer" class="text-xs text-orange-300 font-mono mt-1">4.5s simulated lag</div>
@@ -413,7 +414,7 @@
         <button id="bookAnotherBtn" class="px-5 py-2.5 rounded-lg bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs shadow transition">
           Book Another Ticket
         </button>
-        <a href="http://localhost:3000/dashboard" target="_blank" class="px-5 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 transition">
+        <a href="http://localhost:3003" target="_blank" class="px-5 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 transition">
           View Public Analytics
         </a>
       </div>

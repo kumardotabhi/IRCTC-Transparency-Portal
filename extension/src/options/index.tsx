@@ -173,36 +173,49 @@ export function OptionsApp() {
         updatedAt: Date.now()
       };
 
-      // 1. Encrypt client-side
+      // 1. Encrypt client-side (passphrase never leaves browser)
       const encrypted = await encryptData(vaultData, passphrase);
 
-      // 2. Mock / Real auth token login
-      const signupRes = await fetch('http://localhost:3001/auth/signup', {
+      // 2. Authenticate with Vault Backend.
+      //    Strategy: always try LOGIN first. Only attempt SIGNUP if login says
+      //    account doesn't exist (401). This prevents the 409 "email already
+      //    exists" error that occurs when you sync more than once.
+      let token = '';
+      const VAULT_EMAIL = 'user@tatkal.local';
+
+      const loginRes = await fetch('http://localhost:3001/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'user@tatkal.local', password: passphrase })
+        body: JSON.stringify({ email: VAULT_EMAIL, password: passphrase })
       }).catch(() => null);
 
-      let token = '';
-      if (signupRes && signupRes.ok) {
-        const d = await signupRes.json();
-        token = d.data?.token;
-      } else {
-        const loginRes = await fetch('http://localhost:3001/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: 'user@tatkal.local', password: passphrase })
-        });
+      if (loginRes && loginRes.ok) {
+        // Account exists and passphrase matches — just use the token
         const d = await loginRes.json();
         token = d.data?.token;
+      } else {
+        // Account doesn't exist yet — create it and get token
+        const signupRes = await fetch('http://localhost:3001/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: VAULT_EMAIL, password: passphrase })
+        }).catch(() => null);
+
+        if (signupRes && signupRes.ok) {
+          const d = await signupRes.json();
+          token = d.data?.token;
+        }
       }
 
       if (!token) {
-        showStatus('Could not authenticate with Vault Backend.', 'error');
+        showStatus(
+          'Could not authenticate with Vault Backend. Make sure vault-service is running on port 3001 and your passphrase matches the one you signed up with.',
+          'error'
+        );
         return;
       }
 
-      // 3. Upload Ciphertext Blob (Server receives NO plaintext)
+      // 3. Upload Ciphertext Blob — server receives NO plaintext, only encrypted bytes
       const uploadRes = await fetch('http://localhost:3001/profiles', {
         method: 'POST',
         headers: {

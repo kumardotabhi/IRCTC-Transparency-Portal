@@ -54,6 +54,22 @@ export class FormDetector {
     }
   }
 
+  private isVisible(element: Element): boolean {
+    const htmlElement = element as HTMLElement;
+    if (htmlElement.closest('.hidden')) return false;
+    if (typeof window === 'undefined') return true;
+    const styles = window.getComputedStyle(htmlElement);
+    return styles.display !== 'none' && styles.visibility !== 'hidden';
+  }
+
+  private queryVisible(selector: string, root: Document | Element = document): Element | null {
+    return this.queryAll(selector, root).find((element) => this.isVisible(element)) || null;
+  }
+
+  private queryAllVisible(selector: string, root: Document | Element = document): Element[] {
+    return this.queryAll(selector, root).filter((element) => this.isVisible(element));
+  }
+
   /**
    * Detect currently active IRCTC or Mock screen
    */
@@ -61,7 +77,7 @@ export class FormDetector {
     const screens = this.schema.screens;
 
     // Check Confirmation Screen
-    if (this.query(screens.confirmation.indicator, doc) || this.query(screens.confirmation.pnrElement, doc)) {
+    if (this.queryVisible(screens.confirmation.indicator, doc) || this.queryVisible(screens.confirmation.pnrElement, doc)) {
       return {
         activeScreen: 'CONFIRMATION',
         schemaVersion: this.schema.version,
@@ -72,7 +88,7 @@ export class FormDetector {
     }
 
     // Check Payment Gateway Screen
-    if (this.query(screens.paymentGateway.indicator, doc) || this.query(screens.paymentGateway.payButton, doc)) {
+    if (this.queryVisible(screens.paymentGateway.indicator, doc) || this.queryVisible(screens.paymentGateway.payButton, doc)) {
       return {
         activeScreen: 'PAYMENT_GATEWAY',
         schemaVersion: this.schema.version,
@@ -83,7 +99,7 @@ export class FormDetector {
     }
 
     // Check Review & Captcha Screen
-    if (this.query(screens.reviewAndCaptcha.indicator, doc) || this.query(screens.reviewAndCaptcha.captchaInput, doc)) {
+    if (this.queryVisible(screens.reviewAndCaptcha.indicator, doc) || this.queryVisible(screens.reviewAndCaptcha.captchaInput, doc)) {
       return {
         activeScreen: 'REVIEW_AND_CAPTCHA',
         schemaVersion: this.schema.version,
@@ -94,8 +110,8 @@ export class FormDetector {
     }
 
     // Check Passenger Form Screen
-    const passengerRows = this.queryAll(screens.passengerDetails.passengerRows, doc);
-    if (this.query(screens.passengerDetails.indicator, doc) || passengerRows.length > 0 || this.query(screens.passengerDetails.contactMobile, doc)) {
+    const passengerRows = this.queryAllVisible(screens.passengerDetails.passengerRows, doc);
+    if (this.queryVisible(screens.passengerDetails.indicator, doc) || passengerRows.length > 0 || this.queryVisible(screens.passengerDetails.contactMobile, doc)) {
       return {
         activeScreen: 'PASSENGER_DETAILS',
         schemaVersion: this.schema.version,
@@ -106,7 +122,7 @@ export class FormDetector {
     }
 
     // Check Train Search Screen
-    if (this.query(screens.trainSearch.indicator, doc) || this.query(screens.trainSearch.searchButton, doc)) {
+    if (this.queryVisible(screens.trainSearch.indicator, doc) || this.queryVisible(screens.trainSearch.searchButton, doc)) {
       return {
         activeScreen: 'TRAIN_SEARCH',
         schemaVersion: this.schema.version,

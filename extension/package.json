@@ -5,7 +5,10 @@
   "description": "Tatkal Readiness & Transparency Layer Browser Extension",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "cross-env VITE_BUILD_TARGET=pages vite build && cross-env VITE_BUILD_TARGET=content vite build && cross-env VITE_BUILD_TARGET=background vite build",
+    "build:pages": "cross-env VITE_BUILD_TARGET=pages vite build",
+    "build:content": "cross-env VITE_BUILD_TARGET=content vite build",
+    "build:background": "cross-env VITE_BUILD_TARGET=background vite build",
     "test": "npx tsx src/modules/crypto/__tests__/crypto.test.ts && npx tsx src/modules/timing/__tests__/timing.test.ts"
   },
   "dependencies": {
@@ -20,6 +23,7 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.19",
+    "cross-env": "^10.1.0",
     "postcss": "^8.4.38",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -29,4 +33,3 @@
     "vite": "^5.2.11"
   }
 }
-

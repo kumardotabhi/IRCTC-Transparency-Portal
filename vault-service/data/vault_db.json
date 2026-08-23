@@ -1,35 +1,63 @@
 {
   "users": [
     {
-      "id": "5c112e0a-4f2c-41b5-9be6-6c94f423d647",
+      "id": "600ace61-5b7a-459b-ab2e-13a1f757414e",
       "email": "tatkal.tester@example.com",
-      "passwordHash": "$2a$10$duED0oQhG7GnNhbTcAeFH.XDXhWDjdNB1eNZIXVD/Fe7B7B.oHbya",
-      "createdAt": "2026-08-22T14:27:05.304Z"
+      "passwordHash": "$2a$10$Q1ZRkfG2o5qowtuAfVxRc.RPFHeUGpfZz6/WZHVE0EUeOpBEN4TPu",
+      "createdAt": "2026-08-23T10:02:07.871Z"
+    },
+    {
+      "id": "134e4e40-9d19-407f-9dfb-15ad44aabda7",
+      "email": "user@tatkal.local",
+      "passwordHash": "$2a$10$Ve9YrgyuAou6hhMpXZyViuW8a4VfyiDLbkXjaGIv.We1Zls.bWCom",
+      "createdAt": "2026-08-23T10:45:04.944Z"
     }
   ],
   "vaults": [
     {
-      "id": "85eeca54-8a3e-4745-97bd-721b51275ed5",
-      "userId": "5c112e0a-4f2c-41b5-9be6-6c94f423d647",
+      "id": "97a92bfc-0db8-42e1-80ed-25bd4e8ac0ac",
+      "userId": "600ace61-5b7a-459b-ab2e-13a1f757414e",
       "profileName": "Family Tatkal (2 Adults, 1 Child)",
       "ciphertext": "AES_GCM_ENCRYPTED_BLOB_BASE64_ABC123XYZ==",
       "iv": "12BYTE_IV_BASE64==",
       "salt": "16BYTE_SALT_BASE64==",
       "version": 1,
-      "createdAt": "2026-08-22T14:27:05.423Z",
-      "updatedAt": "2026-08-22T14:27:05.423Z"
+      "createdAt": "2026-08-23T10:02:08.005Z",
+      "updatedAt": "2026-08-23T10:02:08.005Z"
+    },
+    {
+      "id": "86a28729-761c-4209-8224-78491a1a0f4d",
+      "userId": "134e4e40-9d19-407f-9dfb-15ad44aabda7",
+      "profileName": "Ankita",
+      "ciphertext": "b6nBtiIcnNRs/LtzlHkQ/3omACdTsUukqTqVvRt+uDCN4roMxFRurYSL4lAtKJ5gqFoLcmL/099DzLeF5Vx1I58n8qQttMTHKDw3FgIcHsOkmmI7xJulInh05QvYUzF1z6b/4BYWqXT6HCS7AHZF7QL7deCgrGJesSDSXNT3Nf8+/ENdy01Wr538HPKIKRjBIhD/MD7VrodRI89tfTOaUKOhFjbV/M4aJ4BeyWTGNArNvcYWXOjMTEVeg+aEbduU853MdhsU1jfKglt9jAmtOIdzrHptxi1hOaxSrEqpgUpPeIqVuHpsQ3FxeToN6aZ77FjyKqIIuIKatmkWIZIBuxub9qE+jiAB4OnBw5JFUn+X3gVHD4uU8A2j/I3L8OEQvdmVh46ARZCZLkubUldq4BX3244k7+6fyNToTTt4UprWnc4rO4J4ZpFfHdyoz+Ytj2PTeBxY2tmUBAjP08KaXzEBt7DxPCLoticmeQSnOIr9F/RaxS2YVtKFhIlZ4HnwLhG0/+0T964xgJqv5jGGeOp0PTQuT16f+35dNap85QymxpIDz58zAjt4BiN5hxZeaDp21DxuJehgtlAF+V17K03lmuBIhvK+mdxRLUqSuFmb0g==",
+      "iv": "m8EjrpL49a+6Tj4c",
+      "salt": "X5iHLtrRt3LxVpfUFWANbw==",
+      "version": 1,
+      "createdAt": "2026-08-23T10:45:04.969Z",
+      "updatedAt": "2026-08-23T10:45:04.969Z"
+    },
+    {
+      "id": "f1295fb3-8b1a-4be4-8c99-19a8e8cf7da1",
+      "userId": "134e4e40-9d19-407f-9dfb-15ad44aabda7",
+      "profileName": "Abhi",
+      "ciphertext": "viFEmfME4vE+23NF38CCwt32cOTVLXVN4O66OKWIggFA+A4MRdnEZ9n/mPxRhoIvNXi+EGSc0qxdzbjrUJWtE+UjPbuJ2vskvYmYUnvqvO/gR8Pzkww3I/q27XwUbweuuxhQzvJXzsIefXK75bWqGzLq5uUnCKAjEJSuRC5kc95fhAZj03f86Lc7N+5qEFG3HuJ6/x2t4gVPCDbZVNgS4SJgUu9e0G365Bx8J8aXozhR3Sre5cp5T++zD6jnFveunezou/GshhU6lsS3ZKZNH10BdEpgUzcnUOu2ebG4CsZto691WE4ad759dK4L0coVwBLJaAgDi2MrBYcESA5swZ0ZIwPxXiT3MdfIYgOvVcep81yYZ5VufTW1s47hV5Ska/Og4spnYaH2pBrEbONnLWB+Mt9efbYNW2u00oII2bUUGc+RnlmuzbTQm02M2lKNBJGbjXGmyyQK8vn/NgeBRvlnnD2BuC0/AeyzweGAt3oPUoHS5Lcm0PXFY1eIfdKRJwXpgGXbQutv+quRF74mAwHpib9lFAIPRsiEgSzmvbPJfH2phzz4aW1stDTfiOTMsuc52D6FLgsNZlN7MWVsfPP0g0geM1ElVXfm4Ik1dTo6XAw=",
+      "iv": "zQICS1t0jZB+NpHA",
+      "salt": "V6zWYHkKAJPuwE+WC9HSdQ==",
+      "version": 1,
+      "createdAt": "2026-08-23T10:46:34.977Z",
+      "updatedAt": "2026-08-23T10:46:34.977Z"
     }
   ],
   "paymentTokens": [
     {
-      "id": "4a126785-62fe-4a73-8062-a9ecf3d734e0",
-      "userId": "5c112e0a-4f2c-41b5-9be6-6c94f423d647",
+      "id": "1e1c6847-e24a-4ea3-9f15-39cf8c22812e",
+      "userId": "600ace61-5b7a-459b-ab2e-13a1f757414e",
       "provider": "RAZORPAY_SANDBOX",
       "tokenRef": "tok_sandbox_tatkal_card_9921",
       "cardLast4": "8834",
       "cardNetwork": "RUPAY",
       "label": "Personal Tatkal RuPay",
-      "createdAt": "2026-08-22T14:27:05.428Z"
+      "createdAt": "2026-08-23T10:02:08.009Z"
     }
   ]
 }

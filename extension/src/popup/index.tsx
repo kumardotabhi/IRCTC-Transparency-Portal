@@ -59,7 +59,7 @@ export function PopupApp() {
   };
 
   const openDashboard = () => {
-    chrome.tabs.create({ url: 'http://localhost:3000/dashboard' });
+    chrome.tabs.create({ url: 'http://localhost:3003' });
   };
 
   const openMockIrctc = () => {

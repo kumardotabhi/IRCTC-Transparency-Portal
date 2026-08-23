@@ -14,11 +14,14 @@ export interface OverlayProps {
 export function Overlay({ detection, timingLogger, vaultData, onAutofillTriggered }: OverlayProps) {
   const [collapsed, setCollapsed] = useState<boolean>(false);
   const [elapsedMs, setElapsedMs] = useState<number>(0);
+  const [timerRunning, setTimerRunning] = useState<boolean>(true);
   const [autofillStatus, setAutofillStatus] = useState<AutofillResult | null>(null);
   const [activeReport, setActiveReport] = useState<DiagnosticReport | null>(null);
 
   // Live stopwatch during active booking flow
   useEffect(() => {
+    if (!timerRunning) return;
+
     const timer = setInterval(() => {
       const timestamps = timingLogger.getTimestamps();
       if (timestamps.length > 0) {
@@ -29,7 +32,7 @@ export function Overlay({ detection, timingLogger, vaultData, onAutofillTriggere
     }, 100);
 
     return () => clearInterval(timer);
-  }, [timingLogger]);
+  }, [timingLogger, timerRunning]);
 
   // Handle 1-click autofill
   const handleAutofill = () => {
@@ -50,6 +53,7 @@ export function Overlay({ detection, timingLogger, vaultData, onAutofillTriggere
   };
 
   const handleGenerateReport = (outcome: DiagnosticReport['outcome'] = 'SUCCESS') => {
+    setTimerRunning(false);
     const report = timingLogger.generateReport(outcome);
     setActiveReport(report);
 
@@ -73,7 +77,7 @@ export function Overlay({ detection, timingLogger, vaultData, onAutofillTriggere
   return (
     <>
       {/* Floating HUD Badge / Panel */}
-      <div className="fixed top-4 right-4 z-[999999] font-sans antialiased select-none text-slate-100">
+      <div className="pointer-events-auto fixed top-4 right-4 z-[999999] font-sans antialiased select-none text-slate-100">
         <div className="bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-xl shadow-2xl shadow-black/60 p-3 w-80 transition-all">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-2">
@@ -164,7 +168,7 @@ export function Overlay({ detection, timingLogger, vaultData, onAutofillTriggere
 
       {/* DIAGNOSTIC REPORT MODAL */}
       {activeReport && (
-        <div className="fixed inset-0 z-[9999999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="pointer-events-auto fixed inset-0 z-[9999999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-5 text-slate-100 max-h-[90vh] overflow-y-auto">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
@@ -250,7 +254,7 @@ export function Overlay({ detection, timingLogger, vaultData, onAutofillTriggere
               </span>
               <div className="flex space-x-2">
                 <button
-                  onClick={() => window.open('http://localhost:3000/dashboard', '_blank')}
+                  onClick={() => window.open('http://localhost:3003', '_blank')}
                   className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700"
                 >
                   View Public Dashboard

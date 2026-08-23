@@ -1,0 +1,242 @@
+🔧 How the Entire Backend Works — Action by Action
+The Two Backend Servers
+
+
+vault-service   → Port 3001  → Stores encrypted passenger data & payment tokens
+analytics-service → Port 3002 → Stores anonymized timing events & powers the dashboard
+Both are plain Express servers. Both store data in a JSON file on disk (like a mini database). No SQL, no MongoDB — just fs.writeFileSync to a .json file.
+
+VAULT SERVICE (vault-service/) — Port 3001
+The Database File: vault-service/data/vault_db.json
+This is the actual "database". It's a JSON file with 3 sections you can see right now:
+
+json
+
+
+{
+  "users": [ ... ],    ← accounts (email + hashed password)
+  "vaults": [ ... ],   ← encrypted passenger blobs (ciphertext only)
+  "paymentTokens": [ ... ]  ← opaque payment references
+}
+You can open 
+vault_db.json
+ and see your actual data there right now.
+
+How db.ts works
+JsonDatabase is a class that:
+
+On startup — reads vault_db.json into memory (this.data)
+Every write — calls fs.writeFileSync(...) to persist back to disk immediately (no batching)
+Queries — just .find() and .filter() on the in-memory array
+
+
+Start server
+    ↓
+JsonDatabase constructor() runs
+    ↓
+reads vault_db.json from disk into this.data = { users[], vaults[], paymentTokens[] }
+    ↓
+Every request reads from this.data (in memory, fast)
+Every write pushes to this.data then calls save() → writes whole file to disk
+Action 1: POST /auth/signup — When you click "Sync Ciphertext to Vault API" for the first time
+
+
+Extension Options page
+    ↓
+fetch("POST http://localhost:3001/auth/signup", { email: "user@tatkal.local", password: "tatkal2026" })
+    ↓
+authController.signup() runs:
+    1. Checks if email exists → db.findUserByEmail("user@tatkal.local")
+       → scans users[] array in memory
+    2. If exists: returns 409 Conflict (the bug you hit before — now fixed)
+    3. If new: bcrypt.hash("tatkal2026", 10)
+       → This takes ~100ms intentionally (makes brute-force hard)
+       → produces: "$2a$10$Ve9YrgyuAou..." (what you see in the DB file)
+    4. db.createUser({ id: uuid(), email, passwordHash, createdAt })
+       → pushes to users[] in memory
+       → writes entire vault_db.json to disk
+    5. jwt.sign({ userId, email }, "tatkal-vault-secret", { expiresIn: "30d" })
+       → produces a signed JWT token string
+    6. Returns: { success: true, data: { token: "eyJhb...", user: {...} } }
+Action 2: POST /auth/login — Every subsequent sync
+
+
+Extension Options page
+    ↓
+fetch("POST http://localhost:3001/auth/login", { email: "user@tatkal.local", password: "tatkal2026" })
+    ↓
+authController.login() runs:
+    1. db.findUserByEmail("user@tatkal.local") → finds the user record
+    2. bcrypt.compare("tatkal2026", "$2a$10$Ve9YrgyuAou...")
+       → re-hashes the input and compares byte-by-byte (never stores plaintext)
+       → takes ~100ms
+    3. If match: jwt.sign(...) → returns fresh JWT
+    4. If no match: 401 Unauthorized
+Action 3: POST /profiles — Uploading the encrypted vault blob
+This runs after login, with the JWT in the Authorization: Bearer <token> header.
+
+
+
+Extension: encrypts passenger data → sends ciphertext
+    ↓
+Request arrives at vault-service with:
+    Headers: { Authorization: "Bearer eyJhb..." }
+    Body: {
+      profileName: "My Tatkal Profile",
+      ciphertext: "b6nBtiIcnNRs/Ltz...",   ← 400+ chars of Base64 gibberish
+      iv: "m8EjrpL49a+6Tj4c",              ← 12-byte initialization vector
+      salt: "X5iHLtrRt3LxVpfUFWANbw==",   ← 16-byte PBKDF2 salt
+      version: 1
+    }
+    ↓
+authenticateToken middleware runs FIRST:
+    1. Reads "Bearer eyJhb..." from the header
+    2. jwt.verify(token, "tatkal-vault-secret") → decodes to { userId: "134e4e40...", email: "user@tatkal.local" }
+    3. Attaches req.user = { userId, email } to the request object
+    4. Calls next() → passes to profilesController
+    ↓
+profilesController.createProfile() runs:
+    1. ZERO-KNOWLEDGE GUARD: checks if req.body has any of:
+       ["passengers", "password", "name", "email", "phone"]
+       → If found: returns 400 "Server refuses plaintext passenger data"
+    2. Extracts { profileName, ciphertext, iv, salt, version } from body
+    3. db.saveVaultBlob({
+         id: uuid(),
+         userId: req.user.userId,   ← links blob to THIS user's account
+         profileName,
+         ciphertext, iv, salt, version,
+         createdAt, updatedAt
+       })
+       → writes to vaults[] array
+       → saves to vault_db.json
+    4. Returns: { success: true, data: { blob } }
+What the server sees: only "b6nBtiIcnNRs/Ltz..." — meaningless without your passphrase. It cannot see names, ages, mobile numbers — nothing.
+
+Action 4: GET /profiles — Extension fetching your data back
+
+
+Extension → fetch("GET http://localhost:3001/profiles", { Authorization: "Bearer ..." })
+    ↓
+authenticateToken middleware → verifies JWT → extracts userId
+    ↓
+profilesController.listProfiles():
+    db.getVaultBlobsByUserId(req.user.userId)
+    → filters vaults[] where vault.userId === req.user.userId
+    → returns only YOUR blobs, not anyone else's
+    ↓
+Extension receives the ciphertext blobs
+    ↓
+Extension calls decryptData(blob.ciphertext, passphrase)  ← DECRYPTION HAPPENS IN BROWSER
+    ↓
+You see your passenger names — server never saw them
+Action 5: POST /payment-tokens/sandbox-generate — Generating a test token
+
+
+Extension → fetch("POST http://localhost:3001/payment-tokens/sandbox-generate", { method: "RUPAY", last4: "8829" })
+    ↓
+paymentsController.generateSandboxToken():
+    1. PCI-DSS GUARD: checks body for ["cardNumber", "cvv", "pin", "fullCardNumber"]
+       → If found: 400 "Server refuses raw card data"
+    2. Generates: tokenRef = "tok_sandbox_" + random string
+    3. Saves { tokenRef, provider: "RAZORPAY_SANDBOX", cardLast4: "8829", label } to paymentTokens[]
+    4. Returns the opaque token reference
+ANALYTICS SERVICE (analytics-service/) — Port 3002
+The Database File: analytics-service/data/analytics_events.json
+A flat array of 180+ anonymized event records. Each looks like:
+
+json
+
+
+{
+  "sessionHash": "anon_k3j9z2_42",        ← one-way SHA-256, not reversible
+  "tatkalQuota": "AC_TATKAL",
+  "totalDurationMs": 32450,
+  "stages": [
+    { "stage": "TRAIN_SEARCH", "durationMs": 5821 },
+    { "stage": "PAYMENT_GATEWAY_INTERACTION", "durationMs": 11200 }
+  ],
+  "outcome": "SUCCESS",
+  "primaryBottleneckStage": "PAYMENT_GATEWAY_INTERACTION",
+  "timestamp": "2026-08-23T04:22:11.000Z"
+}
+No names, no emails, no PNR, no phone numbers — just timing numbers and hashed IDs.
+
+Action 6: POST /events/batch — Extension sending your booking timing
+
+
+After booking completes → extension calls sendReportTelemetry(report)
+    ↓
+eventsController.ingestBatch():
+    1. PII GUARD: containsPii(req.body)
+       → recursively checks ALL keys and values against:
+         ["name", "email", "phone", "mobile", "card", "password", "pnr", "address", "aadhaar"]
+       → If ANY match found: 400 "PII detected — rejected"
+    2. Validates each event has required fields (sessionHash, stages, outcome)
+    3. analyticsStore.addEventsBatch(events)
+       → pushes to this.events[] in memory
+       → saves to analytics_events.json
+    4. Returns: { success: true, message: "X events ingested" }
+Action 7: GET /dashboard/summary — Dashboard chart data
+
+
+http://localhost:3003 (dashboard) → fetch("GET http://localhost:3002/dashboard/summary")
+    ↓ (every 30 seconds)
+dashboardController.getSummary():
+    analyticsStore.getDashboardSummary()
+    ↓
+Runs these aggregations over ALL events in memory:
+    1. successRate = (events where outcome === "SUCCESS") / total × 100
+    2. averageBookingDurationMs = sum of all totalDurationMs / count
+    3. bottleneckBreakdown:
+       → groups events by primaryBottleneckStage
+       → counts how many times each stage was the slowest
+       → e.g. "Bank Gateway was bottleneck in 38% of attempts"
+    4. failureCauseBreakdown:
+       → groups failed events by outcome type
+       → e.g. "Seats Exhausted: 45%, Timeout: 30%, Payment: 25%"
+    5. hourlyTrend:
+       → pre-computed buckets for 09:55, 09:58, 10:00, 10:02, 10:05, 10:10, 11:00
+       → shows server latency spike at exactly 10:00 AM
+    6. recentAggregatedSessions:
+       → last 6 events from the array, reversed (newest first)
+    ↓
+Returns the aggregated JSON → dashboard renders charts
+Full Flow Summary: What Happens When You Do the Entire Demo
+
+
+You type passphrase + passenger data in Extension Options
+    │
+    ├─ [BROWSER ONLY] encryptData(data, passphrase)
+    │   → AES-GCM-256 encryption, key derived with PBKDF2
+    │   → produces ciphertext + iv + salt
+    │
+    ├─ POST /auth/login (or /auth/signup on first run)
+    │   → vault-service bcrypt-verifies passphrase
+    │   → returns JWT (30-day token)
+    │
+    └─ POST /profiles with { ciphertext, iv, salt }
+        → vault-service zero-knowledge guard checks for plaintext
+        → saves encrypted blob to vault_db.json
+        → YOU can verify: open vault_db.json and see nothing readable
+You open Mock Portal → Find Trains → Book Now
+    │
+    ├─ Extension detects screen change (PASSENGER_DETAILS)
+    ├─ Reads vault from chrome.storage.local (already decrypted in memory)
+    │
+    └─ You click "1-Click Autofill"
+        → fills form fields with native events
+        → NO submission code
+You solve CAPTCHA manually → Confirm Payment
+    │
+    └─ Extension's timingLogger.generateReport()
+        → measures each stage duration
+        → builds plain-language summary
+You click "Generate Report"
+    │
+    ├─ Gantt modal appears in browser (no server call)
+    │
+    └─ sendReportTelemetry(report)  [if opt-in enabled]
+        → PII stripped
+        → sessionHash = SHA-256(sessionId + today's date)
+        → POST /events/batch → analytics-service saves to analytics_events.json
+        → Dashboard at localhost:3003 shows updated charts within 30s

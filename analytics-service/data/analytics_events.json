@@ -28,7 +28,7 @@
     "outcome": "SUCCESS",
     "primaryBottleneckStage": "CAPTCHA_DISPLAYED",
     "clientVersion": "1.0.0",
-    "timestamp": "2026-08-22T15:53:39.221Z"
+    "timestamp": "2026-08-23T10:02:12.901Z"
   },
   {
     "sessionHash": "anon_sha256_hash_test_67890",
@@ -51,6 +51,216 @@
     "outcome": "FAILURE_SEATS_EXHAUSTED",
     "primaryBottleneckStage": "SEAT_AVAILABILITY_CHECK",
     "clientVersion": "1.0.0",
-    "timestamp": "2026-08-22T15:53:39.223Z"
+    "timestamp": "2026-08-23T10:02:12.903Z"
+  },
+  {
+    "sessionHash": "36fb12e96b3fe7adfb41ab43b34275e66ea240a342e684c89e1f0c8bdcd7db21",
+    "tatkalQuota": "AC_TATKAL",
+    "totalDurationMs": 41498,
+    "stages": [
+      {
+        "stage": "PAGE_LOAD",
+        "durationMs": 0
+      },
+      {
+        "stage": "TRAIN_SEARCH",
+        "durationMs": 6982
+      },
+      {
+        "stage": "PASSENGER_FORM_OPEN",
+        "durationMs": 1600
+      },
+      {
+        "stage": "AUTOFILL_EXECUTION",
+        "durationMs": 4
+      },
+      {
+        "stage": "CAPTCHA_DISPLAYED",
+        "durationMs": 13578
+      },
+      {
+        "stage": "PAYMENT_GATEWAY_INTERACTION",
+        "durationMs": 8284
+      },
+      {
+        "stage": "BOOKING_CONFIRMATION",
+        "durationMs": 2109
+      }
+    ],
+    "outcome": "SUCCESS",
+    "primaryBottleneckStage": "CAPTCHA_DISPLAYED",
+    "clientVersion": "1.0.0",
+    "timestamp": "2026-08-23T10:17:11.340Z"
+  },
+  {
+    "sessionHash": "36fb12e96b3fe7adfb41ab43b34275e66ea240a342e684c89e1f0c8bdcd7db21",
+    "tatkalQuota": "AC_TATKAL",
+    "totalDurationMs": 93514,
+    "stages": [
+      {
+        "stage": "PAGE_LOAD",
+        "durationMs": 0
+      },
+      {
+        "stage": "TRAIN_SEARCH",
+        "durationMs": 6982
+      },
+      {
+        "stage": "PASSENGER_FORM_OPEN",
+        "durationMs": 1600
+      },
+      {
+        "stage": "AUTOFILL_EXECUTION",
+        "durationMs": 4
+      },
+      {
+        "stage": "CAPTCHA_DISPLAYED",
+        "durationMs": 13578
+      },
+      {
+        "stage": "PAYMENT_GATEWAY_INTERACTION",
+        "durationMs": 8284
+      },
+      {
+        "stage": "BOOKING_CONFIRMATION",
+        "durationMs": 2109
+      }
+    ],
+    "outcome": "SUCCESS",
+    "primaryBottleneckStage": "CAPTCHA_DISPLAYED",
+    "clientVersion": "1.0.0",
+    "timestamp": "2026-08-23T10:18:03.353Z"
+  },
+  {
+    "sessionHash": "dfa3357247b7b472eab17672e3e29c9c0d7de7bebd6d32d976b53e2d647c7169",
+    "tatkalQuota": "AC_TATKAL",
+    "totalDurationMs": 56784,
+    "stages": [
+      {
+        "stage": "PAGE_LOAD",
+        "durationMs": 0
+      }
+    ],
+    "outcome": "SUCCESS",
+    "primaryBottleneckStage": "PAGE_LOAD",
+    "clientVersion": "1.0.0",
+    "timestamp": "2026-08-23T10:57:10.803Z"
+  },
+  {
+    "sessionHash": "f555bcb7266cca13cf646be0deb2a1303c18e5d6be4c2acd39b63bb9a46a0982",
+    "tatkalQuota": "AC_TATKAL",
+    "totalDurationMs": 67512,
+    "stages": [
+      {
+        "stage": "PAGE_LOAD",
+        "durationMs": 0
+      },
+      {
+        "stage": "TRAIN_SEARCH",
+        "durationMs": 11099
+      },
+      {
+        "stage": "PASSENGER_FORM_OPEN",
+        "durationMs": 7403
+      },
+      {
+        "stage": "AUTOFILL_EXECUTION",
+        "durationMs": 3
+      },
+      {
+        "stage": "CAPTCHA_DISPLAYED",
+        "durationMs": 15060
+      },
+      {
+        "stage": "PAYMENT_GATEWAY_INTERACTION",
+        "durationMs": 7184
+      },
+      {
+        "stage": "BOOKING_CONFIRMATION",
+        "durationMs": 19954
+      }
+    ],
+    "outcome": "SUCCESS",
+    "primaryBottleneckStage": "BOOKING_CONFIRMATION",
+    "clientVersion": "1.0.0",
+    "timestamp": "2026-08-23T10:58:57.528Z"
+  },
+  {
+    "sessionHash": "0302a57d89f0b2a694f9a6f00a0d0cb6ce6acac507fdd827cbd9e8996a6c43f7",
+    "tatkalQuota": "AC_TATKAL",
+    "totalDurationMs": 53837,
+    "stages": [
+      {
+        "stage": "PAGE_LOAD",
+        "durationMs": 0
+      },
+      {
+        "stage": "TRAIN_SEARCH",
+        "durationMs": 13937
+      },
+      {
+        "stage": "PASSENGER_FORM_OPEN",
+        "durationMs": 5404
+      },
+      {
+        "stage": "AUTOFILL_EXECUTION",
+        "durationMs": 4
+      },
+      {
+        "stage": "CAPTCHA_DISPLAYED",
+        "durationMs": 15138
+      },
+      {
+        "stage": "PAYMENT_GATEWAY_INTERACTION",
+        "durationMs": 4059
+      },
+      {
+        "stage": "BOOKING_CONFIRMATION",
+        "durationMs": 6606
+      }
+    ],
+    "outcome": "SUCCESS",
+    "primaryBottleneckStage": "CAPTCHA_DISPLAYED",
+    "clientVersion": "1.0.0",
+    "timestamp": "2026-08-23T11:23:23.725Z"
+  },
+  {
+    "sessionHash": "49f5e98ad319aa917604a04b6c63dd071811d85cf039de0417a2ad3818e27350",
+    "tatkalQuota": "AC_TATKAL",
+    "totalDurationMs": 46698,
+    "stages": [
+      {
+        "stage": "PAGE_LOAD",
+        "durationMs": 0
+      },
+      {
+        "stage": "TRAIN_SEARCH",
+        "durationMs": 15844
+      },
+      {
+        "stage": "PASSENGER_FORM_OPEN",
+        "durationMs": 3694
+      },
+      {
+        "stage": "AUTOFILL_EXECUTION",
+        "durationMs": 3
+      },
+      {
+        "stage": "CAPTCHA_DISPLAYED",
+        "durationMs": 12044
+      },
+      {
+        "stage": "PAYMENT_GATEWAY_INTERACTION",
+        "durationMs": 5360
+      },
+      {
+        "stage": "BOOKING_CONFIRMATION",
+        "durationMs": 1725
+      }
+    ],
+    "outcome": "SUCCESS",
+    "primaryBottleneckStage": "TRAIN_SEARCH",
+    "clientVersion": "1.0.0",
+    "timestamp": "2026-08-23T14:56:52.091Z"
   }
 ]

@@ -15,6 +15,8 @@ const loadingText = document.getElementById('loadingText');
 const loadingTimer = document.getElementById('loadingTimer');
 const latencySelect = document.getElementById('latencyProfileSelect');
 const istClock = document.getElementById('liveIstClock');
+let activeLoadingTimeout = null;
+let activeLoadingInterval = null;
 
 // Live IST Clock simulation
 setInterval(() => {
@@ -39,21 +41,32 @@ function getSimulatedDelay() {
 }
 
 function simulateAsyncAction(actionName, durationMs, callback) {
+  if (activeLoadingTimeout !== null) {
+    clearTimeout(activeLoadingTimeout);
+  }
+  if (activeLoadingInterval !== null) {
+    clearInterval(activeLoadingInterval);
+  }
+
   loadingText.textContent = actionName;
   loadingTimer.textContent = `${(durationMs / 1000).toFixed(1)}s simulated server latency`;
   loadingOverlay.classList.remove('hidden');
+  loadingOverlay.style.display = 'flex';
 
   let remaining = durationMs;
-  const interval = setInterval(() => {
+  activeLoadingInterval = setInterval(() => {
     remaining -= 200;
     if (remaining > 0) {
       loadingTimer.textContent = `${(remaining / 1000).toFixed(1)}s remaining...`;
     }
   }, 200);
 
-  setTimeout(() => {
-    clearInterval(interval);
+  activeLoadingTimeout = setTimeout(() => {
+    clearInterval(activeLoadingInterval);
+    activeLoadingInterval = null;
     loadingOverlay.classList.add('hidden');
+    loadingOverlay.style.display = 'none';
+    activeLoadingTimeout = null;
     callback();
   }, durationMs);
 }
