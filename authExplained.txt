@@ -1,0 +1,394 @@
+Let me trace through the actual code line-by-line with the real data from your `vault_db.json` so you can see exactly what's happening at every step.
+
+---
+
+## 🔐 PART 1: Authentication — Signup & Login
+
+### What "auth" means in this project
+
+There's no Google login, no OTP, no email verification. Auth here is a simple **email + password system** where:
+- The **password is never stored** — only its bcrypt hash is stored
+- Once logged in, you get a **JWT token** — a signed string you send with every future request
+
+---
+
+### SIGNUP — Step by Step
+
+You trigger this when you click **"Sync Ciphertext to Vault API"** for the very first time.
+
+**What the extension sends:**
+```http
+POST http://localhost:3001/auth/signup
+Content-Type: application/json
+
+{
+  "email": "user@tatkal.local",
+  "password": "tatkal2026"
+}
+```
+
+This email `user@tatkal.local` is **hardcoded in the extension** — it's an internal identifier, not your real email. The password is your **master passphrase** that you typed in the Options page.
+
+**What happens inside `authController.ts`:**
+
+```
+Step 1 — Validation
+  if (!email || !password)          → 400 error
+  if (!email.includes('@'))         → 400 error  
+  if (password.length < 6)          → 400 error
+
+Step 2 — Check if already registered
+  db.findUserByEmail("user@tatkal.local")
+    → scans users[] array in vault_db.json
+    → if found: STOP, return 409 "Account already exists"
+    → if not found: continue
+
+Step 3 — Hash the password
+  bcrypt.hash("tatkal2026", 10)
+    → takes ~100ms intentionally
+    → produces something like: "$2a$10$Ve9YrgyuAou6hhMpXZyViu..."
+    → this is a one-way hash — you CANNOT reverse it back to "tatkal2026"
+
+Step 4 — Create the user record
+  db.createUser({
+    id: "134e4e40-9d19-407f-9dfb-15ad44aabda7",   ← random UUID generated
+    email: "user@tatkal.local",
+    passwordHash: "$2a$10$Ve9YrgyuAou6hhMpXZyViu...",  ← hash, not "tatkal2026"
+    createdAt: "2026-08-23T10:45:04.944Z"
+  })
+  → pushes to users[] in memory
+  → writes entire vault_db.json to disk immediately
+
+Step 5 — Generate JWT token
+  jwt.sign(
+    { userId: "134e4e40-...", email: "user@tatkal.local" },
+    "tatkal-vault-default-secret",  ← the JWT_SECRET from .env
+    { expiresIn: "30d" }
+  )
+  → produces a long string like: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOi..."
+  → this token is valid for 30 days
+
+Step 6 — Return to extension
+  {
+    "success": true,
+    "data": {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "user": { "id": "134e4e40-...", "email": "user@tatkal.local" }
+    }
+  }
+```
+
+**What gets stored in `vault_db.json` after signup:**
+```json
+{
+  "users": [
+    {
+      "id": "134e4e40-9d19-407f-9dfb-15ad44aabda7",
+      "email": "user@tatkal.local",
+      "passwordHash": "$2a$10$Ve9YrgyuAou6hhMpXZyViuW8a4VfyiDLbkXjaGIv.We1Zls.bWCom",
+      "createdAt": "2026-08-23T10:45:04.944Z"
+    }
+  ],
+  "vaults": [],
+  "paymentTokens": []
+}
+```
+
+Notice: **"tatkal2026" does not appear anywhere**. Only the hash does.
+
+---
+
+### LOGIN — Step by Step
+
+Every subsequent "Sync" click triggers a login, not a signup (this is the fix we made earlier).
+
+**What the extension sends:**
+```http
+POST http://localhost:3001/auth/login
+
+{ "email": "user@tatkal.local", "password": "tatkal2026" }
+```
+
+**What happens inside `authController.ts`:**
+```
+Step 1 — Find the user
+  db.findUserByEmail("user@tatkal.local")
+  → finds: { id: "134e...", passwordHash: "$2a$10$Ve9Yrg..." }
+
+Step 2 — Verify the password
+  bcrypt.compare("tatkal2026", "$2a$10$Ve9Yrg...")
+  → re-hashes "tatkal2026" with the SAME salt that's embedded in the hash
+  → compares byte-by-byte
+  → returns true ✅ or false ❌
+  → if false: 401 "Invalid email or password"
+
+Step 3 — Generate fresh JWT (same as signup)
+  → returns new 30-day token
+
+Step 4 — Return token to extension
+```
+
+**The JWT token is never stored anywhere** — not in `vault_db.json`, not on disk. The extension holds it in memory for the duration of that sync operation, uses it for the `/profiles` POST, then discards it.
+
+---
+
+### What JWT actually is (decoded)
+
+The token `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIxMzRlNGU0MC0...` is just **Base64-encoded JSON + a signature**. You can decode it right now at [jwt.io](https://jwt.io):
+
+```json
+Header:  { "alg": "HS256", "typ": "JWT" }
+Payload: { "userId": "134e4e40-...", "email": "user@tatkal.local", "iat": 1724414704, "exp": 1727006704 }
+Signature: HMAC-SHA256(header + "." + payload, "tatkal-vault-default-secret")
+```
+
+The **`authenticateToken` middleware** in every protected route does exactly this:
+```
+Request arrives with: Authorization: Bearer eyJhbGci...
+    ↓
+jwt.verify(token, "tatkal-vault-default-secret")
+    → verifies the signature
+    → checks exp (expiry) hasn't passed
+    → decodes payload → { userId: "134e4e40-...", email: "user@tatkal.local" }
+    ↓
+req.user = { userId, email }  ← attached to the request
+    ↓
+next()  ← passes to the actual controller
+```
+
+This means the server knows **which user is making the request** without storing sessions or cookies.
+
+---
+
+## 🔒 PART 2: Encryption — Where, What, and How
+
+This is the most important part. **Two completely separate layers of encryption exist.**
+
+---
+
+### Layer 1: Password Hashing (bcrypt) — Server side
+
+| | Detail |
+|---|---|
+| **What's encrypted** | Your master passphrase ("tatkal2026") |
+| **Algorithm** | bcrypt with cost factor 10 |
+| **Where it runs** | vault-service server (Node.js) |
+| **Where result is stored** | `vault_db.json` → `users[].passwordHash` |
+| **Is it reversible?** | No — one-way hash only |
+| **Purpose** | So even if someone steals vault_db.json, they cannot get your passphrase |
+
+---
+
+### Layer 2: Passenger Data Encryption (AES-GCM-256) — Browser side
+
+This is the zero-knowledge part. **The server never touches this.**
+
+**When does this happen?**
+When you click **"🔒 Save & Encrypt Locally"** in the Options page.
+
+**Exactly what `encryptData()` does in [`crypto.ts`](file:///c:/Users/kumar/OneDrive/Desktop/irctcV2/extension/src/modules/crypto/crypto.ts):**
+
+```
+Input:
+  data = {
+    passengers: [
+      { name: "Aditya Verma", age: 32, gender: "M", berthPreference: "LOWER" },
+      { name: "Sunita Verma", age: 30, gender: "F", berthPreference: "LOWER" }
+    ],
+    preferences: { mobileNumber: "9876543210", autoUpgrade: true, paymentMethodPreference: "UPI" }
+  }
+  passphrase = "tatkal2026"
+
+Step 1 — Generate random 16-byte salt
+  salt = crypto.getRandomValues(new Uint8Array(16))
+  → e.g. [88, 93, 136, 75, 180, 211, ...]
+  → Base64 encoded: "X5iHLtrRt3LxVpfUFWANbw=="
+
+Step 2 — Derive 256-bit key using PBKDF2
+  key = await crypto.subtle.deriveKey(
+    {
+      name: "PBKDF2",
+      salt: salt,
+      iterations: 100_000,    ← 100 thousand hash rounds
+      hash: "SHA-256"
+    },
+    importKey("tatkal2026"),  ← your passphrase as raw bytes
+    { name: "AES-GCM", length: 256 },
+    false,   ← key is NOT extractable — cannot be read back out
+    ["encrypt", "decrypt"]
+  )
+  → produces a 256-bit CryptoKey object, exists only in browser memory
+  → takes ~100ms because of 100k iterations
+
+Step 3 — Generate random 12-byte IV
+  iv = crypto.getRandomValues(new Uint8Array(12))
+  → e.g. [155, 194, 35, 75, ...]
+  → Base64 encoded: "m8EjrpL49a+6Tj4c"
+
+Step 4 — Encrypt the data
+  encrypted = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv: iv },
+    key,
+    new TextEncoder().encode(JSON.stringify(data))  ← convert data to bytes
+  )
+  → produces ciphertext bytes — meaningless without the key
+
+Step 5 — Return
+  {
+    ciphertext: "b6nBtiIcnNRs/LtzlHkQ/3omACdTsU...",  ← Base64 of encrypted bytes
+    iv: "m8EjrpL49a+6Tj4c",                           ← Base64 of IV
+    salt: "X5iHLtrRt3LxVpfUFWANbw=="                  ← Base64 of salt
+  }
+```
+
+**The key `key` is immediately discarded after encryption.** It lives in browser memory for milliseconds.
+
+---
+
+### Where the encrypted data is stored
+
+**Two places simultaneously:**
+
+**1. Browser Local Storage** (`chrome.storage.local`) — via `chrome.storage.local.set()`
+```json
+{
+  "activeDecryptedVault": {
+    "passengers": [{ "name": "Aditya Verma", ... }]
+  },
+  "activeEncryptedBlob": {
+    "ciphertext": "b6nBtiIcnNRs...",
+    "iv": "m8EjrpL49a+6Tj4c",
+    "salt": "X5iHLtrRt3LxVpfUFWANbw=="
+  },
+  "masterKeyUnlocked": true
+}
+```
+> The *decrypted* version lives here too — so you don't have to re-enter your passphrase every time you autofill. It persists until you clear extension storage.
+
+**2. Vault Service server** (`vault_db.json`) — only when you click "Sync to Vault API"
+```json
+{
+  "vaults": [
+    {
+      "id": "86a28729-...",
+      "userId": "134e4e40-...",
+      "profileName": "My Tatkal Profile",
+      "ciphertext": "b6nBtiIcnNRs/LtzlHkQ/3omACdTsU...",
+      "iv": "m8EjrpL49a+6Tj4c",
+      "salt": "X5iHLtrRt3LxVpfUFWANbw==",
+      "version": 1
+    }
+  ]
+}
+```
+
+The **server only receives `ciphertext + iv + salt`** — never the passengers array. This is enforced by the zero-knowledge guard:
+```typescript
+// profilesController.ts — this runs before saving
+const FORBIDDEN_PLAINTEXT_KEYS = ['passengers', 'password', 'name', 'email', 'phone'];
+for (const key of FORBIDDEN_PLAINTEXT_KEYS) {
+  if (req.body[key] !== undefined) {
+    return res.status(400).json({ error: "Server refuses plaintext passenger data" });
+  }
+}
+```
+
+---
+
+### How Decryption works when you come back
+
+```
+You open Options page → passphrase field shows "tatkal2026" (pre-filled default)
+    ↓
+chrome.storage.local.get("activeEncryptedBlob") → gets { ciphertext, iv, salt }
+    ↓
+decryptData(encrypted, "tatkal2026"):
+    1. Decode salt from Base64 → bytes
+    2. Re-derive the SAME key using PBKDF2 with same salt + same passphrase
+       → This ONLY works if passphrase is identical to what was used to encrypt
+    3. Decode IV from Base64 → bytes
+    4. crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ciphertext)
+       → produces original JSON bytes
+    5. JSON.parse → { passengers: [...], preferences: {...} }
+```
+
+If you type the wrong passphrase, step 2 produces a **different key**, and step 4 throws `"Decryption failed"` — the data is completely unreadable.
+
+---
+
+## 💳 PART 3: Payment Tokens
+
+### `POST /payment-tokens/sandbox-generate`
+
+This route requires **no authentication** (no JWT needed). It's a sandbox utility.
+
+**What the extension sends:**
+```http
+POST http://localhost:3001/payment-tokens/sandbox-generate
+{ "method": "RUPAY", "last4": "8829", "label": "RuPay Instant Tatkal Token" }
+```
+
+**What happens:**
+```
+PCI-DSS GUARD runs first:
+  checks for: ["cardNumber", "cvv", "pin", "fullCardNumber", "expiryDate"]
+  → if any found: 400 "Raw card data rejected"
+  → your request only has "method" and "last4" → passes guard
+
+Generate opaque token:
+  tokenRef = "tok_sandbox_" + randomString()
+  → e.g. "tok_sandbox_xk29pL8mNq"
+
+Save to vault_db.json:
+  paymentTokens: [{
+    id: uuid(),
+    userId: "anonymous",  ← sandbox tokens not linked to a user
+    provider: "RAZORPAY_SANDBOX",
+    tokenRef: "tok_sandbox_xk29pL8mNq",
+    cardLast4: "8829",         ← only last 4 digits, never full number
+    cardNetwork: "RUPAY",
+    label: "RuPay Instant Tatkal Token",
+    createdAt: "..."
+  }]
+```
+
+**What NEVER touches the server:** Your actual card number, CVV, expiry date, UPI PIN. Those would be handled by Razorpay/PayU directly in a real production flow — the bank sends back an opaque token reference, which is all we store.
+
+---
+
+## The Complete Data Map
+
+```
+YOUR PASSPHRASE: "tatkal2026"
+    │
+    ├─── bcrypt.hash() ──────────────────────────────────────────────┐
+    │    (server-side, one-way)                                      │
+    │                                                                ↓
+    │                                              vault_db.json → users[].passwordHash
+    │                                              "$2a$10$Ve9Yrg..."
+    │
+    └─── PBKDF2 key derivation ──────────────────────────────────────┐
+         (browser-side, never leaves browser)                        │
+                                                                     ↓
+YOUR PASSENGER DATA ──→ AES-GCM-256 encrypt ──→ ciphertext "b6nBtiI..."
+{ name: "Aditya", age: 32 }     (browser only)           │
+                                                         │
+                                    ┌────────────────────┤
+                                    ↓                    ↓
+                          chrome.storage.local    vault_db.json
+                          (on your computer)      → vaults[].ciphertext
+                          BOTH decrypted &        (only ciphertext,
+                          encrypted copies        never plaintext)
+```
+
+---
+
+## Quick Reference: What Each File Stores
+
+| File                                | Contains                              | Readable by server?                 |
+|---                                  |---                                    |---                                  |
+| `vault_db.json` → `users[]`         | email + bcrypt hash                   | Hash only, not password             |
+| `vault_db.json` → `vaults[]`        | ciphertext + iv + salt                | No — meaningless without passphrase |
+| `vault_db.json` → `paymentTokens[]` | opaque token refs + last4             | Yes, but no sensitive card data     |
+| `chrome.storage.local`              | decrypted passengers + encrypted blob | Never leaves your browser           |
+| `analytics_events.json`             | timing numbers + SHA-256 session hash | Yes, but zero PII                   |

@@ -87,6 +87,21 @@ npm run test:all
 
 You can start the backend services and frontends in separate terminal windows:
 
+### Start All Services in One Terminal (Alternative)
+From the project root, run:
+```bash
+npm run dev:all
+```
+
+This starts the Vault service, Analytics service, Mock IRCTC portal, and Public Transparency Dashboard together. Press `Ctrl+C` to stop all four services.
+
+### Seed Mixed Demo Analytics Data
+Before opening the dashboard for a hackathon presentation, reset the analytics store with a realistic mix of successful and unsuccessful attempts:
+```bash
+npm run seed:analytics-demo
+```
+This is demo data only and replaces `analytics-service/data/analytics_events.json`. Live telemetry remains opt-in and is appended through the normal ingest API.
+
 ### Terminal 1: Start Vault Service (Port 3001)
 ```bash
 npm --workspace=vault-service run dev
@@ -148,6 +163,8 @@ Follow these steps for a complete live demonstration:
    - **Tatkal Peak Rush (4,500ms Server Latency)**
    - **Bank Gateway Delays (8,000ms)**
 4. Click **Find Available Trains** ➔ Click **⚡ Book Now (Tatkal)**.
+
+To demonstrate an unsuccessful attempt, select **Tatkal Exhausted (0 Seats)** before searching. The mock portal keeps the attempt reportable, and the extension HUD lets you choose a failure cause and click **Report Failure**. The event is then included in the dashboard failure breakdown.
 
 ### Step 4: 1-Click Native Autofill (No Auto-Submit)
 1. When you arrive at the **Passenger Details** screen, the floating HUD detects `Passenger Details` and turns green.

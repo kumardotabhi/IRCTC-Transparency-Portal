@@ -84,12 +84,14 @@ trainSearchForm.addEventListener('submit', (e) => {
     if (latencySelect.value === 'SEATS_EXHAUSTED') {
       seatCountBadge.textContent = 'REGRET / NOT AVAILABLE';
       seatCountBadge.className = 'text-rose-700 font-extrabold text-sm';
-      bookNowBtn.disabled = true;
-      bookNowBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      bookNowBtn.disabled = false;
+      bookNowBtn.textContent = '⚡ Attempt Booking (will fail)';
+      bookNowBtn.classList.remove('opacity-50', 'cursor-not-allowed');
     } else {
       seatCountBadge.textContent = 'AVAILABLE - 16';
       seatCountBadge.className = 'text-emerald-700 font-extrabold text-sm';
       bookNowBtn.disabled = false;
+      bookNowBtn.textContent = '⚡ Book Now (Tatkal)';
       bookNowBtn.classList.remove('opacity-50', 'cursor-not-allowed');
     }
     trainResultsContainer.classList.remove('hidden');

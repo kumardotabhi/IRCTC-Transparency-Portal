@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { PassengerVaultData, DiagnosticReport, StageType, StageSummary } from '@irctc-tatkal/shared';
 import { FormDetectionResult } from '../modules/forms/form-detector';
 import { autofillEngine, AutofillResult } from '../modules/autofill/autofill';
@@ -17,6 +17,37 @@ export function Overlay({ detection, timingLogger, vaultData, onAutofillTriggere
   const [timerRunning, setTimerRunning] = useState<boolean>(true);
   const [autofillStatus, setAutofillStatus] = useState<AutofillResult | null>(null);
   const [activeReport, setActiveReport] = useState<DiagnosticReport | null>(null);
+  const [reportOutcome, setReportOutcome] = useState<DiagnosticReport['outcome']>('FAILURE_SEATS_EXHAUSTED');
+  const hudRef = useRef<HTMLDivElement>(null);
+  const [hudPosition, setHudPosition] = useState<{ left: number; top: number } | null>(null);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleHudPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if ((event.target as HTMLElement).closest('button')) return;
+
+    const rect = hudRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    setDragOffset({ x: event.clientX - rect.left, y: event.clientY - rect.top });
+    setHudPosition({ left: rect.left, top: rect.top });
+    setIsDragging(true);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handleHudPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDragging || !hudRef.current) return;
+
+    const rect = hudRef.current.getBoundingClientRect();
+    const left = Math.max(0, Math.min(event.clientX - dragOffset.x, window.innerWidth - rect.width));
+    const top = Math.max(0, Math.min(event.clientY - dragOffset.y, window.innerHeight - rect.height));
+    setHudPosition({ left, top });
+  };
+
+  const handleHudPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    setIsDragging(false);
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  };
 
   // Live stopwatch during active booking flow
   useEffect(() => {
@@ -77,10 +108,21 @@ export function Overlay({ detection, timingLogger, vaultData, onAutofillTriggere
   return (
     <>
       {/* Floating HUD Badge / Panel */}
-      <div className="pointer-events-auto fixed top-4 right-4 z-[999999] font-sans antialiased select-none text-slate-100">
+      <div
+        ref={hudRef}
+        className={`pointer-events-auto fixed z-[999999] font-sans antialiased select-none text-slate-100 ${
+          isDragging ? 'cursor-grabbing' : 'cursor-default'
+        }`}
+        style={hudPosition ? { left: hudPosition.left, top: hudPosition.top } : { top: '1rem', right: '1rem' }}
+      >
         <div className="bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-xl shadow-2xl shadow-black/60 p-3 w-80 transition-all">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-2">
+          <div
+            className="flex items-center justify-between border-b border-slate-800 pb-2 mb-2 cursor-grab"
+            onPointerDown={handleHudPointerDown}
+            onPointerMove={handleHudPointerMove}
+            onPointerUp={handleHudPointerUp}
+          >
             <div className="flex items-center space-x-2">
               <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse"></span>
               <span className="text-xs font-bold tracking-tight text-white">Tatkal Diagnostics HUD</span>
@@ -153,13 +195,32 @@ export function Overlay({ detection, timingLogger, vaultData, onAutofillTriggere
               </div>
 
               {/* Trigger Report Button */}
-              <div className="pt-2 border-t border-slate-800 flex space-x-1.5">
+              <div className="pt-2 border-t border-slate-800 space-y-1.5">
+                <select
+                  value={reportOutcome}
+                  onChange={(event) => setReportOutcome(event.target.value as DiagnosticReport['outcome'])}
+                  className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-[11px] text-slate-300"
+                  aria-label="Diagnostic report outcome"
+                >
+                  <option value="FAILURE_SEATS_EXHAUSTED">Failure: Seats exhausted</option>
+                  <option value="FAILURE_TIMEOUT">Failure: Timeout</option>
+                  <option value="FAILURE_PAYMENT">Failure: Payment</option>
+                  <option value="FAILURE_CAPTCHA">Failure: CAPTCHA</option>
+                </select>
+                <div className="flex space-x-1.5">
                 <button
                   onClick={() => handleGenerateReport('SUCCESS')}
                   className="flex-1 py-1.5 px-2 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold transition border border-slate-700"
                 >
-                  📊 Finish & Generate Report
+                  📊 Report Success
                 </button>
+                <button
+                  onClick={() => handleGenerateReport(reportOutcome)}
+                  className="flex-1 py-1.5 px-2 rounded bg-rose-950/70 hover:bg-rose-900 text-rose-200 text-[11px] font-semibold transition border border-rose-800/70"
+                >
+                  Report Failure
+                </button>
+                </div>
               </div>
             </div>
           )}

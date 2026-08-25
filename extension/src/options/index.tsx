@@ -12,6 +12,7 @@ export function OptionsApp() {
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
 
   // Vault State
+  const [vaultProfileId, setVaultProfileId] = useState<string | null>(null);
   const [profileName, setProfileName] = useState<string>('My Tatkal Profile');
   const [passengers, setPassengers] = useState<Passenger[]>([
     {
@@ -59,7 +60,8 @@ export function OptionsApp() {
 
   useEffect(() => {
     // Load initial storage data
-    chrome.storage.local.get(['activeDecryptedVault', 'paymentTokens', 'userSettings', 'pastReports', 'masterKeyUnlocked'], (res) => {
+    chrome.storage.local.get(['activeDecryptedVault', 'vaultProfileId', 'paymentTokens', 'userSettings', 'pastReports', 'masterKeyUnlocked'], (res) => {
+      if (res.vaultProfileId) setVaultProfileId(res.vaultProfileId);
       if (res.activeDecryptedVault) {
         const v: PassengerVaultData = res.activeDecryptedVault;
         setProfileName(v.profileName || 'My Tatkal Profile');
@@ -84,6 +86,34 @@ export function OptionsApp() {
   const showStatus = (text: string, type: 'success' | 'error' | 'info' = 'success') => {
     setStatusMessage({ text, type });
     setTimeout(() => setStatusMessage(null), 4000);
+  };
+
+  const getVaultAuthToken = async () => {
+    const vaultEmail = 'user@tatkal.local';
+    const credentials = { email: vaultEmail, password: passphrase };
+    const loginRes = await fetch('http://localhost:3001/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(credentials)
+    }).catch(() => null);
+
+    if (loginRes?.ok) {
+      const data = await loginRes.json();
+      return data.data?.token || null;
+    }
+
+    const signupRes = await fetch('http://localhost:3001/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(credentials)
+    }).catch(() => null);
+
+    if (signupRes?.ok) {
+      const data = await signupRes.json();
+      return data.data?.token || null;
+    }
+
+    return null;
   };
 
   // Add Passenger row
@@ -177,35 +207,7 @@ export function OptionsApp() {
       const encrypted = await encryptData(vaultData, passphrase);
 
       // 2. Authenticate with Vault Backend.
-      //    Strategy: always try LOGIN first. Only attempt SIGNUP if login says
-      //    account doesn't exist (401). This prevents the 409 "email already
-      //    exists" error that occurs when you sync more than once.
-      let token = '';
-      const VAULT_EMAIL = 'user@tatkal.local';
-
-      const loginRes = await fetch('http://localhost:3001/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: VAULT_EMAIL, password: passphrase })
-      }).catch(() => null);
-
-      if (loginRes && loginRes.ok) {
-        // Account exists and passphrase matches — just use the token
-        const d = await loginRes.json();
-        token = d.data?.token;
-      } else {
-        // Account doesn't exist yet — create it and get token
-        const signupRes = await fetch('http://localhost:3001/auth/signup', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: VAULT_EMAIL, password: passphrase })
-        }).catch(() => null);
-
-        if (signupRes && signupRes.ok) {
-          const d = await signupRes.json();
-          token = d.data?.token;
-        }
-      }
+      const token = await getVaultAuthToken();
 
       if (!token) {
         showStatus(
@@ -216,8 +218,11 @@ export function OptionsApp() {
       }
 
       // 3. Upload Ciphertext Blob — server receives NO plaintext, only encrypted bytes
-      const uploadRes = await fetch('http://localhost:3001/profiles', {
-        method: 'POST',
+      const profileUrl = vaultProfileId
+        ? `http://localhost:3001/profiles/${vaultProfileId}`
+        : 'http://localhost:3001/profiles';
+      let uploadRes = await fetch(profileUrl, {
+        method: vaultProfileId ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -231,7 +236,31 @@ export function OptionsApp() {
         })
       });
 
+      // A manually removed server record makes the local ID stale.
+      if (uploadRes.status === 404 && vaultProfileId) {
+        uploadRes = await fetch('http://localhost:3001/profiles', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            profileName,
+            ciphertext: encrypted.ciphertext,
+            iv: encrypted.iv,
+            salt: encrypted.salt,
+            version: 1
+          })
+        });
+      }
+
       if (uploadRes.ok) {
+        const savedProfile = await uploadRes.json();
+        const savedProfileId = savedProfile.data?.id;
+        if (savedProfileId && savedProfileId !== vaultProfileId) {
+          setVaultProfileId(savedProfileId);
+          chrome.storage.local.set({ vaultProfileId: savedProfileId });
+        }
         showStatus('☁️ Zero-knowledge ciphertext synced to Vault API successfully!', 'success');
       } else {
         const err = await uploadRes.json();
@@ -245,31 +274,52 @@ export function OptionsApp() {
   // Generate Sandbox Payment Token
   const generateTestPaymentToken = async () => {
     try {
+      if (!passphrase || passphrase.length < 6) {
+        showStatus('Please enter a valid master passphrase first.', 'error');
+        return;
+      }
+
+      const token = await getVaultAuthToken();
+      if (!token) {
+        showStatus('Could not authenticate with Vault Backend. Check your passphrase.', 'error');
+        return;
+      }
+
       const res = await fetch('http://localhost:3001/payment-tokens/sandbox-generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ method: 'RUPAY', last4: '8829', label: 'RuPay Instant Tatkal Token' })
       });
       const data = await res.json();
       if (data.success) {
-        const newToken: PaymentTokenRef = {
-          id: `tok-${Date.now()}`,
-          userId: 'local-user',
-          provider: 'RAZORPAY_SANDBOX',
-          tokenRef: data.data.tokenRef,
-          cardLast4: data.data.cardLast4,
-          cardNetwork: 'RUPAY',
-          label: data.data.label,
-          createdAt: new Date().toISOString()
-        };
+        const saveRes = await fetch('http://localhost:3001/payment-tokens', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(data.data)
+        });
+        const savedData = await saveRes.json();
+        if (!saveRes.ok || !savedData.success) {
+          showStatus(`Token save error: ${savedData.error || 'Server error'}`, 'error');
+          return;
+        }
+
+        const newToken: PaymentTokenRef = savedData.data;
         const updated = [...paymentTokens, newToken];
         setPaymentTokens(updated);
         chrome.storage.local.set({ paymentTokens: updated }, () => {
           showStatus('💳 RuPay Sandbox Payment Token generated (PCI-Compliant)!', 'success');
         });
+      } else {
+        showStatus(`Token generation error: ${data.error || 'Server error'}`, 'error');
       }
     } catch (err: any) {
-      showStatus('Vault service not running, created offline token.', 'info');
+      showStatus(`Could not reach Vault service at http://localhost:3001: ${err.message}`, 'error');
     }
   };
 

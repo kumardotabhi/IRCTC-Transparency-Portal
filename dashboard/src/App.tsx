@@ -85,7 +85,7 @@ export function App() {
             <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Attempts Analyzed</div>
             <div className="flex items-baseline justify-between">
               <span className="text-3xl font-black text-white font-mono">
-                {summary?.totalAttemptsTracked || 180}
+                {summary?.totalAttemptsTracked ?? 180}
               </span>
               <span className="text-xs text-emerald-400 font-semibold bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/60">
                 +18 today
@@ -98,7 +98,7 @@ export function App() {
             <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Avg Booking Duration</div>
             <div className="flex items-baseline justify-between">
               <span className="text-3xl font-black text-orange-400 font-mono">
-                {summary?.averageBookingDurationMs ? (summary.averageBookingDurationMs / 1000).toFixed(1) : '16.8'}s
+                {summary?.averageBookingDurationMs !== undefined ? (summary.averageBookingDurationMs / 1000).toFixed(1) : '16.8'}s
               </span>
               <span className="text-xs text-slate-400 font-mono">Tatkal standard</span>
             </div>
@@ -109,7 +109,7 @@ export function App() {
             <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Success Rate (Confirmed)</div>
             <div className="flex items-baseline justify-between">
               <span className="text-3xl font-black text-emerald-400 font-mono">
-                {summary?.successRatePercentage || 43}%
+                {summary?.successRatePercentage ?? 43}%
               </span>
               <span className="text-xs text-emerald-300 font-semibold">
                 AC & Non-AC

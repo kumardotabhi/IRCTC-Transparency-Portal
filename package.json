@@ -17,6 +17,8 @@
     "dev:extension": "npm --workspace=extension run dev",
     "dev:dashboard": "npm --workspace=dashboard run dev",
     "dev:mock": "npm --workspace=mock-irctc run dev",
+    "dev:all": "concurrently --kill-others-on-fail --names vault,analytics,mock,dashboard \"npm run dev:vault\" \"npm run dev:analytics\" \"npm run dev:mock\" \"npm run dev:dashboard\"",
+    "seed:analytics-demo": "npm --workspace=analytics-service run seed:demo",
     "build:shared": "npm --workspace=shared run build",
     "build:vault": "npm --workspace=vault-service run build",
     "build:analytics": "npm --workspace=analytics-service run build",
@@ -34,6 +36,8 @@
     "chrome-extension"
   ],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^9.2.4"
+  }
 }
-

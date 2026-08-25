@@ -99,6 +99,10 @@ export class AnalyticsEventStore {
     console.log(`[Analytics DB] Seeded ${this.events.length} realistic Tatkal benchmark records.`);
   }
 
+  seedDemoData() {
+    this.seedInitialData();
+  }
+
   addEvent(event: AnonymizedTelemetryPayload) {
     this.events.push(event);
     this.save();
